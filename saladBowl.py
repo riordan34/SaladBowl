@@ -19,21 +19,22 @@ def init(data):
     data.timeHelper = 0 #helper to account for 100millisecond delays
     data.cards = [] #blank deck of cards
     data.discard = [] #holder for discard pile
+    data.skipPile = [] #holds cards skipped during round
     data.turn = 1 #default to team 1's turn
     data.team1Score = 0 #team 1 score
     data.team2Score = 0 #team 2 Score
-    data.cardCreation = True
+    data.cardCreation = True #variable to open card entry screen
     data.gameType = 0 #five options [start,taboo,charades,password,over]
-    data.activeRound = False
+    data.activeRound = False # 'welcome' vs 'active round' data
     data.cardsRemaining = len(data.cards)
-    data.currentCard =''
-    data.drawCard = False
-    data.drawCorrect = False
-    data.drawSkip = False
+    data.currentCard ='' #card displayed
+    data.drawCard = False #draw new card
+    data.drawCorrect = False #correct answer variable
+    data.drawSkip = False #skip card variable
     data.drawSkipButton = [data.width*.05,data.height*.85,data.width*.3,data.height*.95] #dimensions for "button"
     data.drawCorrectButton = [data.width*.7,data.height*.85,data.width*.95,data.height*.95] #dimensions for "button"
-    data.activeCardXBuffer = 150
-    data.activeCardYBuffer = 80
+    data.activeCardXBuffer = 150 #displayed card x dimensions
+    data.activeCardYBuffer = 80 #displayed card Y dimensions
     data.activeScreen = 'Start'
     data.winner = 0
 
@@ -54,9 +55,9 @@ def keyPressed(event, data):
         if (event.keysym == 'Tab'):
             data.activeRound = True
         if (data.gameType == 4):
-            if (event.keysym == 'Space'):
+            if (event.keysym == 'space'):
                 init(data)
-                run()
+                run(width=600, height=600)
 
 def timerFired(data):
     if (data.activeRound):
@@ -93,9 +94,9 @@ def drawStartScreen(canvas,data):
         elif (data.team1Score < data.team2Score):
             data.winner = 2
         winnerText = 'Team ' + str(data.winner) + ' wins!\nCongratulations!'
-        canvas.create_text(data.width/2,data.height*.3,text = winnerText,font='Arial 24 bold')
+        canvas.create_text(data.width/2,data.height*.3,text = winnerText,font='Arial 24 bold', anchor='center')
         canvas.create_text(data.width/2,data.height*.67,
-                            text = "Click \'Space\' to start a new game",font='Arial 18 bold')
+                            text = "Click \'Space\' to start a new game",font='Arial 18 bold', anchor='center')
 
 def playRound(canvas,data):
     drawTimer(canvas,data)
@@ -139,11 +140,21 @@ def playRound(canvas,data):
             #else, draw a new card
             else:
                 data.currentCard = data.cards.pop(random.randint(0,len(data.cards)-1))
-                data.drawCorrect = False
+            data.drawCorrect = False
+        #if 'skip' is pressed, put card in temporary pile, decrement score, draw new card.
         if (data.drawSkip):
-            data.cards.append(data.currentCard) #return card to deck
-            data.currentCard = data.cards.pop(random.randint(0,len(data.cards)-1)) #draw new card
-            data.drawSkip = False
+            data.skipPile.append(data.currentCard) #return card to deck
+            if (data.turn == 1): #decrement score
+                data.team1Score -= 1
+            else: data.team2Score -= 1
+            #if no cards left, add skipPile back into active deck
+            if (len(data.cards) == 0):
+                data.cards += data.skipPile #return cards in skipPile to deck
+                data.skipPile =[] #clear skipPile
+            #else, draw a new card
+            else:
+                data.currentCard = data.cards.pop(random.randint(0,len(data.cards)-1))
+                data.drawSkip = False #return variable to false state
     else:
         roundTimeOut(data)
 
@@ -151,12 +162,14 @@ def deckDepletion(canvas,data):
     data.cards = copy.copy(data.discard) #copy discard into active deck
     data.discard = [] #make discard blank
     data.currentCard ='' #make current card 'blank'
-    data.gameType += 1
+    data.gameType += 1 #go to next game type (round)
     data.activeRound = False
     data.activeScreen = 'Start'
 
 def roundTimeOut(data):
     data.activeRound = False
+    data.cards += data.skipPile #return cards in skipPile to deck
+    data.skipPile =[] #clear skipPile
     data.cards.append(data.currentCard) #return last card to deck
     if data.turn == 1: #swtich turns
         data.turn = 2
@@ -244,6 +257,7 @@ def run(width=600, height=600):
 
         master = Tk()
         master.geometry("500x500")
+        master.title("Card Input")
         tk.Label(master, text="Card 1").grid(row=0)
         tk.Label(master, text="Card 2").grid(row=1)
         tk.Label(master, text="Card 3").grid(row=2)
@@ -282,6 +296,7 @@ def run(width=600, height=600):
     # create the root and the canvas
 
     root = Tk()
+    root.title("Play Salad Bowl")
     canvas = Canvas(root, width=data.width, height=data.height)
     canvas.pack()
     # set up events
